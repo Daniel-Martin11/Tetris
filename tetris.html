@@ -1,0 +1,368 @@
+<!-- 
+     tetris - by Daniel Martin
+     10 cells x 18 cells (or 250 x 450px)
+     each cell is 25 x 25px
+ -->
+
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Tetris</title>
+  <style>
+    html, body, canvas {
+      margin: 0;
+      padding: 0
+    }
+    html, body { 
+      width:100%; 
+      height:100%; 
+      overflow:hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas" width="250" height="450" style="border:1px solid #000000;"></canvas>
+  
+  <script type="text/javascript"> 
+    var CELL_SIZE = 25;
+    var INTERVAL = 175; // milliseconds
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    var activeBlock = new Block(5);//(Math.floor(Math.random() * 7));
+    var grid = new Grid();
+
+    function Grid() { // initialize playing field matrix (10 cells by 18 cells)
+      this.grid = [];
+      for (i = 0; i < 18; ++i) {
+        this.grid.push(new Array(false,false,false,false,false,false,false,false,false,false));
+      }
+    }
+
+    Grid.prototype.AddToMatrix = function(Block) {
+      for (var i = 0; i < 4; ++i) {
+        //window.alert(Block.cells[i].y);
+        //if y is less than 0, game over message; terminate the game
+        if (Block.cells[i].y < 0) {
+          clearInterval(interval);
+          window.alert("Keep your day job.  Oh wait, you don't have one.");
+        }
+        this.grid[Block.cells[i].y][Block.cells[i].x] = true; //add each retired cell to matrix (change its value to 'true')
+      }
+      for (var j = 0; j < 18; ++j) { // for all rows, check for completed rows (all true)
+        for (var p = 0; p < 10; ++p) {
+          if (!this.grid[j][p]) break; // if we encounter an empty space, the row is not filled -- break out
+          // if p reaches 9 (break didn't occur) and we're still in this loop, then the row is complete, and should now be deleted
+          if (p == 9) {
+            for (var m = j; m > 0; --m) { // time to move all above blocks down (gravity drop).  For all above rows...
+              this.grid[m] = this.grid[m - 1]; // copy above row down one spot (gravity)
+            }
+            this.grid[0] = [false,false,false,false,false,false,false,false,false,false]; // top row will be empty
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', function(event) {
+      if (event.keyCode == 32) { // if space is pressed
+        activeBlock.Rotate();
+      }
+      if (event.keyCode == 65 || event.keyCode == 37) { // left is pressed (A or left arrow)
+        activeBlock.UpdatePosition(-1, 0);
+      } else if (event.keyCode == 68 || event.keyCode == 39) { // right is pressed (D or right arrow)
+        activeBlock.UpdatePosition(1, 0);
+        }
+    });
+
+    function clearGrid() {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, 10 * CELL_SIZE, 18 * CELL_SIZE);
+    }
+
+    function Cell(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+
+    Cell.prototype.draw = function() {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(this.x * CELL_SIZE, this.y * CELL_SIZE, 25, 25);
+    };
+
+    Cell.prototype.drop = function() {
+      ++this.y;
+    }
+
+    function Block(blockType) {
+      this.type = blockType;
+      this.cells = [];
+      this.x = 5;
+      this.y = -1;
+      this.rotateState = 0;
+
+      switch(this.type) {
+        case 0: // straight block
+          this.cells.push(new Cell(this.x, this.y));
+          this.cells.push(new Cell(this.x - 1, this.y));
+          this.cells.push(new Cell(this.x + 1, this.y));
+          this.cells.push(new Cell(this.x + 2, this.y));
+          break;
+        case 1: // 'J' block
+          this.cells.push(new Cell(this.x, this.y));
+          this.cells.push(new Cell(this.x + 1, this.y));
+          this.cells.push(new Cell(this.x - 1, this.y));
+          this.cells.push(new Cell(this.x - 1, this.y - 1));
+          break;
+        case 2: // 'L' block
+          this.cells.push(new Cell(this.x, this.y));
+          this.cells.push(new Cell(this.x - 1, this.y));
+          this.cells.push(new Cell(this.x + 1, this.y));
+          this.cells.push(new Cell(this.x + 1, this.y - 1));
+          break;
+        case 3: // square block
+          this.cells.push(new Cell(this.x, this.y));
+          this.cells.push(new Cell(this.x, this.y - 1));
+          this.cells.push(new Cell(this.x - 1, this.y));
+          this.cells.push(new Cell(this.x - 1, this.y - 1));
+          break;
+        case 4: // 's' block
+          this.cells.push(new Cell(this.x, this.y));
+          this.cells.push(new Cell(this.x - 1, this.y));
+          this.cells.push(new Cell(this.x, this.y - 1));
+          this.cells.push(new Cell(this.x + 1, this.y - 1));
+          break;
+        case 5: // 'T' block
+          this.cells.push(new Cell(this.x, this.y));
+          this.cells.push(new Cell(this.x - 1, this.y));
+          this.cells.push(new Cell(this.x, this.y - 1));
+          this.cells.push(new Cell(this.x + 1, this.y));
+          break;
+        case 6: // 'z' block
+          this.cells.push(new Cell(this.x, this.y));
+          this.cells.push(new Cell(this.x, this.y - 1));
+          this.cells.push(new Cell(this.x - 1, this.y - 1));
+          this.cells.push(new Cell(this.x + 1, this.y));
+          break;
+        default:
+          this.cells.push(new Cell(1, 1)); // only push one cell; a flag if something goes wrong
+      }
+    }
+
+    Block.prototype.Rotate = function() {
+      //if cell is touching the main cell, it moves clockwise
+      //if not, it moves two spaces in one direction
+        //line block is an exception; satellite cell moves 'clockwise twice' ex. (down, left, down, left)
+      if (this.type == 3) return; // if square block, don't rotate
+      if (this.type == 0) return; // special handling needed for the line block
+      for (var i = 1; i < 4; ++i) {
+                                                                                                                                                                   
+        //if x value is within one and y value is the same -- OR -- if y value is within one and x is the same (as center block, or this.cells[0])
+
+        if ((Math.abs(this.cells[i].x - this.cells[0].x) == 1 && this.cells[i].y == this.cells[0].y) || 
+            (Math.abs(this.cells[i].y - this.cells[0].y) == 1 && this.cells[i].x == this.cells[0].x)) {
+          if (this.cells[i].x - this.cells[0].x < 1 && this.cells[i].y - this.cells[0].y < 1) this.cells[i].x += 1;
+          else this.cells[i].x -= 1;
+          if (this.cells[i].y - this.cells[0].y < 1 && this.cells[i]) return; //this.cells[i].y += 1;
+          else return; // this.cells[i].y -= 1;
+        }  
+      }
+    }
+
+    Block.prototype.UpdatePosition = function(x, y) { // responds to keyboard input; handles horizontal collision
+      for (var i = 0; i < 4; ++i) {      
+        this.cells[i].x += x; // moves the cells one space left or one space right
+      }
+      for (i = 0; i < 4; ++i) {
+        if (this.cells[i].x < 0 || (x == -1 && grid.grid[this.cells[i].y][this.cells[i].x])) { // if blocked from going left
+          for (var j = 0; j < 4; ++j) {
+            this.cells[j].x += 1;       
+          }
+        }
+      }
+      for (i = 0; i < 4; ++i) {
+        if (this.cells[i].x > 9 || (x == 1 && grid.grid[this.cells[i].y][this.cells[i].x])) { // if blocked from going right
+          for (var k = 0; k < 4; ++k) {
+            this.cells[k].x -= 1;
+          }
+        }
+      }
+    }
+
+    Block.prototype.draw = function() {
+      for (var i = 0; i < 4; ++i) this.cells[i].draw();
+    };
+
+    Block.prototype.wouldCollide = function(grid) {
+      for (var i = 0; i < 4; ++i) { // for all cells of the active block
+        if (this.cells[i].y + 1 >= 0) { // if cell is within the playing field
+          if (grid.grid[this.cells[i].y + 1][this.cells[i].x]) { // if there's an inactive cell one spot below the current active cell
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    Block.prototype.drop = function() {
+      ++this.y;
+      for (var i = 0; i < 4; ++i) this.cells[i].drop();
+    };
+
+    Block.prototype.canDrop = function() {
+      if (this.y >= 17) {
+        return false;
+      }
+      if (activeBlock.wouldCollide(grid)) {
+        return false;
+      }
+      return true;
+    }
+
+    activeBlock.draw();
+    var interval = setInterval(function() {
+      clearGrid();
+      activeBlock.draw();
+      // go through all items in the matrix, if an item is true: use the x & y value to draw the cell
+      for (var j = 0; j < 18; ++j) {
+        for (var k = 0; k < 10; ++k) {
+          if (grid.grid[j][k] == true) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(k * CELL_SIZE, j * CELL_SIZE, 25, 25);
+          }  
+        }
+      }
+      if (activeBlock.canDrop()) {
+        activeBlock.drop();
+      } else {
+        grid.AddToMatrix(activeBlock);
+        activeBlock = new Block(5);//(Math.floor(Math.random() * 7));
+        if (activeBlock.canDrop() === false) {
+          clearInterval(interval);
+        }
+      }
+    }, INTERVAL);
+
+
+  </script>
+
+</body>
+</html>
+
+
+
+<!-- 
+
+
+// CODE GRAVEYARD -- where code goes to die
+
+
+
+    //  if (this.type === 0) {
+    //    for (var i = 0; i < 4; ++i) this.cells[i].draw();
+        
+     // }
+     //          //window.alert("sometext");
+
+
+    //};
+
+    //inactive block could be up to 180 cells
+    //create megainactive block object, that's not an array
+    //mega block would keep info on which (of 180) cells are on the playing field
+    //a regular check could be made to see if a line has been cleared
+
+    //GAME OVER
+    //good thing is wasn't a snake
+    //dead
+    //Keep your day job.  Oh wait, you don't have one.
+
+  //          for (j = 0; j < this.grid[rowComplete[i]].length; ++j) { // clear the row (set all values back to false)
+    //      this.grid[rowComplete[i]][j] = false;  //change all values in the row back to false PROBABLY DON'T NEED TO 'CLEAR ROW'!!!!!
+      //  }
+
+      Math.floor(Math.random() * 1000);
+
+      change back line 151
+
+          grid.push(new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)); //this keeps track of the 'index,' or number of spaces filled in a row
+
+                  //index the number of filled spots in a given row -- when it reaches 10 it will dissappear and reset to '0'
+        grid[18][Y] += 1; // index that a single, additional spot has been filled in a specific row (18=index array, Y=row marker)
+
+      for (var k = 0; k < rowComplete.length; ++k) { // for all rows which are complete
+        for (m = this.grid[rowComplete[k]]; m <= 0; --m) { // move all above blocks down (gravity drop).  For all above rows...
+          this.grid[rowComplete[k]] = this.grid[rowComplete[k - 1]]; // copy above row down one spot (gravity)
+        }
+      }  
+
+
+      if (offscreenLeft == true) { // move entire block 1 space to the right (and back on screen)
+        for (var j = 0; j < 4; ++j) {
+          this.cells[j].x += 1;       
+        }
+      }
+      if (offscreenRight == true) { // move entire block 1 space to the left (and back on screen)
+        for (var k = 0; k < 4; ++k) {
+          this.cells[k].x -= 1;
+        }
+      }
+
+(grid.grid[5][5]) {//       
+
+        X = Block.cells[i].x;
+        Y = Block.cells[i].y;
+
+// if AddToMatrix is called, and one of the cells being added goes outside the array (anything 
+   under zero . . . -1, -2 -3, etc), window.alert('Game Over'); -- then stop
+   the interval, or something to end the game
+
+        if (x is -1 & there is blockage on the left) break;
+
+        if (x is 1 & there is blockage on the right) break;
+
+      /*for (var a = 0; a < 4; ++a) { // if there is blockage on the left
+        if (x == -1 && grid.grid[this.cells[a].y][this.cells[a].x - 1]) {
+          return;
+          window.alert("???");
+        }
+      }
+      for (var b = 0; b < 4; ++b) { // if there is blockage on the right
+        if (x == 1 && grid.grid[this.cells[b].y][this.cells[b].x + 1]) {
+          return;
+          window.alert("???");
+        }
+      }*/      
+      //if (1 and something is to the right) break;
+
+      /*if (this.type === 0) { // line block
+        this.cells.push(new Cell(this.x, this.y));
+        this.cells.push(new Cell(this.x, this.y - 1));
+        this.cells.push(new Cell(this.x, this.y - 2));
+        this.cells.push(new Cell(this.x, this.y - 3));
+      }
+      if (this.type === 1) { // "J" block
+        this.cells.push(new Cell(this.x, this.y));
+        this.cells.push(new Cell(this.x, this.y - 1));
+        this.cells.push(new Cell(this.x, this.y - 2));
+        this.cells.push(new Cell(this.x, this.y - 3));
+      }*/    
+
+
+//if cell is touching the main cell, it moves clockwise
+      //if not, it moves two spaces in one direction
+        //line block is an exception; satellite cell moves 'clockwise twice' ex. (down, left, down, left)
+      if (this.type == 3) return; // if square block, don't rotate
+      if (this.type == 0) return; // special handling needed for the line block
+      for (var i = 1; i < 4; ++i) {
+                                                                                                                                                                   
+        //if x value is within one and y value is the same -- OR -- if y value is within one and x is the same (as center block, or this.cells[0])
+        if ((Math.abs(this.cells[i].x - this.cells[0].x) == 1 && this.cells[i].y == this.cells[0].y) || 
+            (Math.abs(this.cells[i].y - this.cells[0].y) == 1 && this.cells[i].x == this.cells[0].x)) {
+          //rotate
+        }
+      }        
+        
+ -->
+
