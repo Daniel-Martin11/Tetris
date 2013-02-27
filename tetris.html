@@ -27,40 +27,58 @@
   <canvas id="canvas" width="250" height="450" style="border:1px solid #000000;"></canvas>
   
   <script type="text/javascript"> 
-    var CELL_SIZE = 25;
-    var INTERVAL = 175; // milliseconds
+    var CELL_SIZE = 25; // pixels
+    var INTERVAL = 200; // milliseconds
+    var LIGHT_BLUE = '#00FFFF';
+    var DARK_BLUE = '#0000A0';
+    var ORANGE = '#E56717';
+    var YELLOW = '#FDD017';
+    var GREEN = '#008000';
+    var PURPLE = '#800080';
+    var RED = '#FF0000';
+    var WHITE = '#FFFFFF';
+    
     var canvas = document.getElementById('canvas');
     var ctx = canvas.getContext('2d');
-    var activeBlock = new Block(5);//(Math.floor(Math.random() * 7));
+    var activeBlock = CreateRandomBlock();
     var grid = new Grid();
+
 
     function Grid() { // initialize playing field matrix (10 cells by 18 cells)
       this.grid = [];
       for (i = 0; i < 18; ++i) {
-        this.grid.push(new Array(false,false,false,false,false,false,false,false,false,false));
+        this.grid.push(new Array(WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE));
       }
     }
 
     Grid.prototype.AddToMatrix = function(Block) {
       for (var i = 0; i < 4; ++i) {
-        //window.alert(Block.cells[i].y);
-        //if y is less than 0, game over message; terminate the game
-        if (Block.cells[i].y < 0) {
+        if (Block.cells[i].y < 0) { // if y is less than 0, game over message; terminate the game
           clearInterval(interval);
           window.alert("Keep your day job.  Oh wait, you don't have one.");
         }
-        this.grid[Block.cells[i].y][Block.cells[i].x] = true; //add each retired cell to matrix (change its value to 'true')
+        this.grid[Block.cells[i].y][Block.cells[i].x] = Block.cells[i].color; // add each retired cell to matrix (storing cell.color in the matrix)
       }
-      for (var j = 0; j < 18; ++j) { // for all rows, check for completed rows (all true)
+      for (var j = 0; j < 18; ++j) { // for all rows, check for completed rows (no white space)
         for (var p = 0; p < 10; ++p) {
-          if (!this.grid[j][p]) break; // if we encounter an empty space, the row is not filled -- break out
+          if (this.grid[j][p] == WHITE) break; // if we encounter a white space, the row is not filled -- break out
           // if p reaches 9 (break didn't occur) and we're still in this loop, then the row is complete, and should now be deleted
           if (p == 9) {
             for (var m = j; m > 0; --m) { // time to move all above blocks down (gravity drop).  For all above rows...
               this.grid[m] = this.grid[m - 1]; // copy above row down one spot (gravity)
             }
-            this.grid[0] = [false,false,false,false,false,false,false,false,false,false]; // top row will be empty
+            // top row will now be empty:
+            this.grid[0] = [WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE];
           }
+        }
+      }
+    }
+
+    Grid.prototype.draw = function() {
+      for (var j = 0; j < 18; ++j) { // draw all cells of the matrix
+        for (var k = 0; k < 10; ++k) {
+          ctx.fillStyle = grid.grid[j][k];
+          ctx.fillRect(k * CELL_SIZE, j * CELL_SIZE, 25, 25);
         }
       }
     }
@@ -68,26 +86,35 @@
     window.addEventListener('keydown', function(event) {
       if (event.keyCode == 32) { // if space is pressed
         activeBlock.Rotate();
+        activeBlock.UpdatePosition(0, 0);
+        grid.draw();
+        activeBlock.draw();
       }
       if (event.keyCode == 65 || event.keyCode == 37) { // left is pressed (A or left arrow)
         activeBlock.UpdatePosition(-1, 0);
-      } else if (event.keyCode == 68 || event.keyCode == 39) { // right is pressed (D or right arrow)
+        grid.draw();
+        activeBlock.draw();
+      }
+      if (event.keyCode == 68 || event.keyCode == 39) { // right is pressed (D or right arrow)
         activeBlock.UpdatePosition(1, 0);
-        }
+        grid.draw();
+        activeBlock.draw();
+      }
+      if (event.keyCode == 40 || event.keyCode == 83) { // if down is pressed (S or down arrow)
+        activeBlock.UpdatePosition(0, 1);
+        grid.draw();
+        activeBlock.draw();
+      }
     });
 
-    function clearGrid() {
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, 10 * CELL_SIZE, 18 * CELL_SIZE);
-    }
-
-    function Cell(x, y) {
+    function Cell(x, y, color) {
       this.x = x;
       this.y = y;
+      this.color = color;
     }
 
     Cell.prototype.draw = function() {
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = this.color;
       ctx.fillRect(this.x * CELL_SIZE, this.y * CELL_SIZE, 25, 25);
     };
 
@@ -95,97 +122,148 @@
       ++this.y;
     }
 
+    function CreateRandomBlock() {
+      return new Block(Math.floor(Math.random() * 7));
+    }
+
     function Block(blockType) {
       this.type = blockType;
       this.cells = [];
-      this.x = 5;
-      this.y = -1;
-      this.rotateState = 0;
+      this.x = 5; // position of the center block
+      this.y = -1; // position of the center block
 
       switch(this.type) {
         case 0: // straight block
-          this.cells.push(new Cell(this.x, this.y));
-          this.cells.push(new Cell(this.x - 1, this.y));
-          this.cells.push(new Cell(this.x + 1, this.y));
-          this.cells.push(new Cell(this.x + 2, this.y));
+          this.cells.push(new Cell(this.x, this.y, LIGHT_BLUE)); // center block
+          this.cells.push(new Cell(this.x - 1, this.y, LIGHT_BLUE));
+          this.cells.push(new Cell(this.x + 1, this.y, LIGHT_BLUE));
+          this.cells.push(new Cell(this.x + 2, this.y, LIGHT_BLUE));
           break;
         case 1: // 'J' block
-          this.cells.push(new Cell(this.x, this.y));
-          this.cells.push(new Cell(this.x + 1, this.y));
-          this.cells.push(new Cell(this.x - 1, this.y));
-          this.cells.push(new Cell(this.x - 1, this.y - 1));
+          this.cells.push(new Cell(this.x, this.y, DARK_BLUE)); // center block
+          this.cells.push(new Cell(this.x + 1, this.y, DARK_BLUE));
+          this.cells.push(new Cell(this.x - 1, this.y, DARK_BLUE));
+          this.cells.push(new Cell(this.x - 1, this.y - 1, DARK_BLUE));
           break;
         case 2: // 'L' block
-          this.cells.push(new Cell(this.x, this.y));
-          this.cells.push(new Cell(this.x - 1, this.y));
-          this.cells.push(new Cell(this.x + 1, this.y));
-          this.cells.push(new Cell(this.x + 1, this.y - 1));
+          this.cells.push(new Cell(this.x, this.y, ORANGE)); // center block
+          this.cells.push(new Cell(this.x - 1, this.y, ORANGE));
+          this.cells.push(new Cell(this.x + 1, this.y, ORANGE));
+          this.cells.push(new Cell(this.x + 1, this.y - 1, ORANGE));
           break;
         case 3: // square block
-          this.cells.push(new Cell(this.x, this.y));
-          this.cells.push(new Cell(this.x, this.y - 1));
-          this.cells.push(new Cell(this.x - 1, this.y));
-          this.cells.push(new Cell(this.x - 1, this.y - 1));
+          this.cells.push(new Cell(this.x, this.y, YELLOW)); // center block
+          this.cells.push(new Cell(this.x, this.y - 1, YELLOW));
+          this.cells.push(new Cell(this.x - 1, this.y, YELLOW));
+          this.cells.push(new Cell(this.x - 1, this.y - 1, YELLOW));
           break;
         case 4: // 's' block
-          this.cells.push(new Cell(this.x, this.y));
-          this.cells.push(new Cell(this.x - 1, this.y));
-          this.cells.push(new Cell(this.x, this.y - 1));
-          this.cells.push(new Cell(this.x + 1, this.y - 1));
+          this.cells.push(new Cell(this.x, this.y, GREEN)); // center block
+          this.cells.push(new Cell(this.x - 1, this.y, GREEN));
+          this.cells.push(new Cell(this.x, this.y - 1, GREEN));
+          this.cells.push(new Cell(this.x + 1, this.y - 1, GREEN));
           break;
         case 5: // 'T' block
-          this.cells.push(new Cell(this.x, this.y));
-          this.cells.push(new Cell(this.x - 1, this.y));
-          this.cells.push(new Cell(this.x, this.y - 1));
-          this.cells.push(new Cell(this.x + 1, this.y));
+          this.cells.push(new Cell(this.x, this.y, PURPLE)); // center block
+          this.cells.push(new Cell(this.x - 1, this.y, PURPLE));
+          this.cells.push(new Cell(this.x, this.y - 1, PURPLE));
+          this.cells.push(new Cell(this.x + 1, this.y, PURPLE));
           break;
         case 6: // 'z' block
-          this.cells.push(new Cell(this.x, this.y));
-          this.cells.push(new Cell(this.x, this.y - 1));
-          this.cells.push(new Cell(this.x - 1, this.y - 1));
-          this.cells.push(new Cell(this.x + 1, this.y));
+          this.cells.push(new Cell(this.x, this.y, RED)); // center block
+          this.cells.push(new Cell(this.x, this.y - 1, RED));
+          this.cells.push(new Cell(this.x - 1, this.y - 1, RED));
+          this.cells.push(new Cell(this.x + 1, this.y, RED));
           break;
         default:
-          this.cells.push(new Cell(1, 1)); // only push one cell; a flag if something goes wrong
+          this.cells.push(new Cell(1, 1, RED)); // only push one cell; a flag if something goes wrong
       }
     }
 
     Block.prototype.Rotate = function() {
-      //if cell is touching the main cell, it moves clockwise
-      //if not, it moves two spaces in one direction
-        //line block is an exception; satellite cell moves 'clockwise twice' ex. (down, left, down, left)
+      //if cell is touching the main cell (perpendicular), it moves clockwise around the main cell.
+      //if not, it moves two spaces in a certain direction (still clockwise).
+      //line block is an exception; the most distant cell moves 2 spaces in both x & y dimentions (say -- down, left, down, left)
       if (this.type == 3) return; // if square block, don't rotate
-      if (this.type == 0) return; // special handling needed for the line block
+      var xDifferential = [];
+      var yDifferential = [];
       for (var i = 1; i < 4; ++i) {
-                                                                                                                                                                   
-        //if x value is within one and y value is the same -- OR -- if y value is within one and x is the same (as center block, or this.cells[0])
+        xDifferential[i] = this.cells[i].x - this.cells[0].x;
+        yDifferential[i] = this.cells[i].y - this.cells[0].y;
+      }      
+      for (var k = 1; k < 4; ++k) { // handling for the 'most distant' cell of the line block
+        if (k == 3 && this.type == 0) {
+          if (yDifferential[k] == 2) {
+            this.cells[k].x -= 2;
+            this.cells[k].y -= 2;
+          }
+          if (yDifferential[k] == -2) {
 
-        if ((Math.abs(this.cells[i].x - this.cells[0].x) == 1 && this.cells[i].y == this.cells[0].y) || 
-            (Math.abs(this.cells[i].y - this.cells[0].y) == 1 && this.cells[i].x == this.cells[0].x)) {
-          if (this.cells[i].x - this.cells[0].x < 1 && this.cells[i].y - this.cells[0].y < 1) this.cells[i].x += 1;
-          else this.cells[i].x -= 1;
-          if (this.cells[i].y - this.cells[0].y < 1 && this.cells[i]) return; //this.cells[i].y += 1;
-          else return; // this.cells[i].y -= 1;
-        }  
+            this.cells[k].x += 2;
+            this.cells[k].y += 2;
+          }
+          if (xDifferential[k] == 2) {
+            this.cells[k].x -= 2;
+            this.cells[k].y += 2;
+          }
+          if (xDifferential[k] == -2) {
+            this.cells[k].x += 2;
+            this.cells[k].y -= 2;
+          }
+          break;
+        }
+        // if block is diagonal from center, apply special handling
+        if (xDifferential[k] != 0 && yDifferential[k] != 0) { // if nither xDifferential nor yDifferential are equal to 0
+          if (xDifferential[k] == -1) {
+            if (yDifferential[k] == 1) this.cells[k].y -= 2;
+            else {this.cells[k].x += 2;}
+          } else {
+            if (yDifferential[k] == 1) this.cells[k].x -= 2;
+            else this.cells[k].y += 2;
+          }
+          continue;
+        }
+        // handling for normal (perpendicular) cells
+        if (xDifferential[k] == -1 || yDifferential[k] == -1) {
+          this.cells[k].x += 1;
+        }
+        else {
+          this.cells[k].x -= 1;
+        }
+        if (xDifferential[k] == 1 || yDifferential[k] == -1) {
+          this.cells[k].y += 1;
+        }
+          else {
+          this.cells[k].y -= 1;
+        }
       }
     }
 
-    Block.prototype.UpdatePosition = function(x, y) { // responds to keyboard input; handles horizontal collision
-      for (var i = 0; i < 4; ++i) {      
+    Block.prototype.UpdatePosition = function(x, y) { // responds to keyboard input; handles collision
+      if (this.y == -1) {return;} // if block isn't on playing field yet, don't move it
+      for (var i = 0; i < 4; ++i) {
         this.cells[i].x += x; // moves the cells one space left or one space right
+        this.cells[i].y += y; // moves the cells one space up or one space down
       }
       for (i = 0; i < 4; ++i) {
-        if (this.cells[i].x < 0 || (x == -1 && grid.grid[this.cells[i].y][this.cells[i].x])) { // if blocked from going left
+        if (this.cells[i].x < 0 || (x == -1 && grid.grid[this.cells[i].y][this.cells[i].x] != WHITE)) { // if blocked from going left
           for (var j = 0; j < 4; ++j) {
             this.cells[j].x += 1;       
           }
         }
       }
       for (i = 0; i < 4; ++i) {
-        if (this.cells[i].x > 9 || (x == 1 && grid.grid[this.cells[i].y][this.cells[i].x])) { // if blocked from going right
+        if (this.cells[i].x > 9 || (x == 1 && grid.grid[this.cells[i].y][this.cells[i].x] != WHITE)) { // if blocked from going right
           for (var k = 0; k < 4; ++k) {
             this.cells[k].x -= 1;
           }
+        }
+      }
+      for (i = 0; i < 4; ++i) {
+        while (this.cells[i].y > 17 || grid.grid[this.cells[i].y][this.cells[i].x] != WHITE) { // while blocked by the floor
+          for (j = 0; j < 4; ++j) {
+            this.cells[j].y -= 1;
+          }          
         }
       }
     }
@@ -196,8 +274,8 @@
 
     Block.prototype.wouldCollide = function(grid) {
       for (var i = 0; i < 4; ++i) { // for all cells of the active block
-        if (this.cells[i].y + 1 >= 0) { // if cell is within the playing field
-          if (grid.grid[this.cells[i].y + 1][this.cells[i].x]) { // if there's an inactive cell one spot below the current active cell
+        if (this.cells[i].y + 1 >= 0) { // if cell is within the playing field (or one cell above it)
+          if (grid.grid[this.cells[i].y + 1][this.cells[i].x] != WHITE) { // if there's a cell resting one spot below the current active cell
             return true;
           }
         }
@@ -211,8 +289,10 @@
     };
 
     Block.prototype.canDrop = function() {
-      if (this.y >= 17) {
-        return false;
+      for (var i = 0; i < 4; ++i) {
+        if (this.cells[i].y >= 17) {
+          return false;
+        }
       }
       if (activeBlock.wouldCollide(grid)) {
         return false;
@@ -220,27 +300,14 @@
       return true;
     }
 
-    activeBlock.draw();
     var interval = setInterval(function() {
-      clearGrid();
+      grid.draw();
       activeBlock.draw();
-      // go through all items in the matrix, if an item is true: use the x & y value to draw the cell
-      for (var j = 0; j < 18; ++j) {
-        for (var k = 0; k < 10; ++k) {
-          if (grid.grid[j][k] == true) {
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(k * CELL_SIZE, j * CELL_SIZE, 25, 25);
-          }  
-        }
-      }
       if (activeBlock.canDrop()) {
         activeBlock.drop();
       } else {
         grid.AddToMatrix(activeBlock);
-        activeBlock = new Block(5);//(Math.floor(Math.random() * 7));
-        if (activeBlock.canDrop() === false) {
-          clearInterval(interval);
-        }
+        activeBlock = CreateRandomBlock();
       }
     }, INTERVAL);
 
@@ -255,17 +322,37 @@
 <!-- 
 
 
-// CODE GRAVEYARD -- where code goes to die
 
 
+
+// CODE GRAVEYARD -- where bad code goes to die
+
+
+
+
+
+
+      } else {
+        grid.AddToMatrix(activeBlock);
+        activeBlock = new Block(Math.floor(Math.random() * 7));
+        if (activeBlock.canDrop() === false) {
+          clearInterval(interval);
+        }
+      }
+
+TODO: make function 'DrawMatrix' to make code cleaner
+      fix bug that doesn't let the game terminate properly
+
+    function clearGrid() { // don't need this function any more
+      ctx.fillStyle = WHITE;
+      ctx.fillRect(0, 0, 10 * CELL_SIZE, 18 * CELL_SIZE);
+    }
 
     //  if (this.type === 0) {
     //    for (var i = 0; i < 4; ++i) this.cells[i].draw();
         
      // }
      //          //window.alert("sometext");
-
-
     //};
 
     //inactive block could be up to 180 cells
@@ -349,7 +436,6 @@
         this.cells.push(new Cell(this.x, this.y - 3));
       }*/    
 
-
 //if cell is touching the main cell, it moves clockwise
       //if not, it moves two spaces in one direction
         //line block is an exception; satellite cell moves 'clockwise twice' ex. (down, left, down, left)
@@ -363,6 +449,27 @@
           //rotate
         }
       }        
-        
+
+        //if x value is within one and y value is the same -- OR -- if y value is within one and x is the same (as center block, or this.cells[0])
+
+        //if ((Math.abs(this.cells[i].x - this.cells[0].x) == 1 && this.cells[i].y == this.cells[0].y) || 
+          //  (Math.abs(this.cells[i].y - this.cells[0].y) == 1 && this.cells[i].x == this.cells[0].x)) {
+        /*if (true) {
+          console.log(this.cells[i].x - this.cells[0].x);
+          console.log(this.cells[i].y - this.cells[0].y);
+          if (this.cells[i].x - this.cells[0].x < 1 && this.cells[i].y - this.cells[0].y < 1) this.cells[i].x += 1;
+          else this.cells[i].x -= 1;
+          if (this.cells[i].y - this.cells[0].y < 1 && this.cells[i].x - this.cells[0].x < 1) this.cells[i].y += 1;
+          else this.cells[i].y -= 1;*/        
+
+      this.cells[1].x += 1;
+      this.cells[1].y -= 1;
+      this.cells[2].x += 1;
+      this.cells[2].y += 1;
+      this.cells[3].x -= 1;
+      this.cells[3].y += 1;     
+
+                  console.log(this.cells[i].x - this.cells[0].x);
+          console.log(this.cells[i].y - this.cells[0].y);           
  -->
 
